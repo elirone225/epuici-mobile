@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'config/theme.dart';
 import 'firebase_options.dart';
 import 'screens/ecran_demarrage.dart';
+import 'services/mise_a_jour.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -19,8 +20,33 @@ void main() async {
   runApp(const EpuiciApp());
 }
 
-class EpuiciApp extends StatelessWidget {
+class EpuiciApp extends StatefulWidget {
   const EpuiciApp({super.key});
+
+  @override
+  State<EpuiciApp> createState() => _EpuiciAppState();
+}
+
+class _EpuiciAppState extends State<EpuiciApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Mémorise la version chargée au démarrage
+    MiseAJour.verifier();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Retour sur l'app : recharge la PWA si une nouvelle version a été publiée
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState etat) {
+    if (etat == AppLifecycleState.resumed) MiseAJour.verifier();
+  }
 
   @override
   Widget build(BuildContext context) {
