@@ -133,9 +133,13 @@ class DemandeGroupe {
   }
 }
 
+// type : 'texte' | 'photo' | 'audio'
 class MessageGroupe {
   final String id;
-  final String texte;
+  final String type;
+  final String texte; // légende pour une photo, vide pour un vocal
+  final String? mediaUrl;
+  final int? dureeAudio; // en secondes
   final DateTime date;
   final String auteurNom;
   final String? auteurPhoto;
@@ -144,7 +148,10 @@ class MessageGroupe {
 
   MessageGroupe({
     required this.id,
+    this.type = 'texte',
     required this.texte,
+    this.mediaUrl,
+    this.dureeAudio,
     required this.date,
     required this.auteurNom,
     this.auteurPhoto,
@@ -156,7 +163,10 @@ class MessageGroupe {
     final auteur = json['auteur'] is Map ? json['auteur'] : null;
     return MessageGroupe(
       id: json['_id'],
+      type: json['type'] ?? 'texte',
       texte: json['texte'] ?? '',
+      mediaUrl: json['mediaUrl'],
+      dureeAudio: (json['dureeAudio'] as num?)?.toInt(),
       // Le serveur renvoie l'heure UTC : on l'affiche en heure locale
       date: (DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now()).toLocal(),
       auteurNom: auteur?['nom'] ?? 'Compte supprimé',
@@ -165,6 +175,9 @@ class MessageGroupe {
       moi: json['moi'] ?? false,
     );
   }
+
+  bool get estPhoto => type == 'photo' && mediaUrl != null;
+  bool get estAudio => type == 'audio' && mediaUrl != null;
 
   // Date brute (UTC, telle que renvoyée par le serveur) pour le paramètre "apres"
   String get dateIso => date.toUtc().toIso8601String();

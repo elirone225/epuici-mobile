@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../models/village_model.dart';
@@ -501,5 +502,42 @@ class ApiService {
       statutAttendu: 201,
     );
     return MessageGroupe.fromJson(donnees);
+  }
+
+  // Envoie une photo (avec légende facultative) ou un message vocal
+  static Future<MessageGroupe> envoyerMediaGroupe(
+    String groupeId, {
+    required List<int> octets,
+    required String nomFichier,
+    required String typeMime,
+    String? legende,
+    int? dureeAudio,
+  }) async {
+    final token = await StockageLocal.obtenirToken();
+    if (token == null) {
+      throw Exception('Vous devez être connecté.');
+    }
+
+    final requete = http.MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/groupes/$groupeId/messages'),
+    );
+    requete.headers['Authorization'] = 'Bearer $token';
+    if (legende != null && legende.isNotEmpty) requete.fields['texte'] = legende;
+    if (dureeAudio != null) requete.fields['dureeAudio'] = dureeAudio.toString();
+    requete.files.add(http.MultipartFile.fromBytes(
+      'media',
+      octets,
+      filename: nomFichier,
+      contentType: MediaType.parse(typeMime),
+    ));
+
+    final reponse = await http.Response.fromStream(await requete.send());
+    final donnees = jsonDecode(reponse.body);
+    if (reponse.statusCode == 201) {
+      return MessageGroupe.fromJson(donnees);
+    } else {
+      throw Exception(donnees['message'] ?? "Impossible d'envoyer le fichier.");
+    }
   }
 }
