@@ -408,6 +408,19 @@ class ApiService {
     }
   }
 
+  // Direct et vidéos à la demande de l'église (onglet "Live & VOD").
+  static Future<Map<String, dynamic>> obtenirLiveVod(String villageId) async {
+    final reponse = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/live-vod/village/$villageId'),
+    );
+
+    final donnees = jsonDecode(reponse.body);
+    if (reponse.statusCode == 200) {
+      return donnees;
+    }
+    throw Exception(donnees['message'] ?? 'Impossible de charger les vidéos.');
+  }
+
   // Envoie une demande de prière à l'admin de l'église suivie par le fidèle.
   static Future<void> envoyerDemandePriere(String texte) async {
     final token = await StockageLocal.obtenirToken();
