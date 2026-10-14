@@ -151,8 +151,6 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (_directEnCours && _lienDirect.isNotEmpty)
-                    _BoutonOuvrirExterne(lien: _lienDirect),
                 ],
               ),
             ),
@@ -181,11 +179,29 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
       child: ColoredBox(
         color: Colors.black,
         child: afficherLecteur
-            ? LecteurIntegre(
-                key: ValueKey('direct-$_lienDirect'),
-                lien: _lienDirect,
-                // Le direct démarre dès que le fidèle ouvre l'onglet.
-                lectureAuto: true,
+            ? Stack(
+                children: [
+                  Positioned.fill(
+                    child: LecteurIntegre(
+                      key: ValueKey('direct-$_lienDirect'),
+                      lien: _lienDirect,
+                      // Le direct démarre dès que le fidèle ouvre l'onglet.
+                      lectureAuto: true,
+                    ),
+                  ),
+                  // Logo et nom de l'église en haut à gauche du direct.
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    right: 60,
+                    child: IgnorePointer(
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: _SignatureEglise(nom: _nomEglise),
+                      ),
+                    ),
+                  ),
+                ],
               )
             : Center(
                 child: Column(
@@ -303,6 +319,42 @@ class _BoutonOuvrirExterne extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: EpuiciColors.primaire,
         visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
+// Logo EPUICI + nom de l'église, incrusté sur le lecteur pendant le direct.
+class _SignatureEglise extends StatelessWidget {
+  final String nom;
+
+  const _SignatureEglise({required this.nom});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset('assets/images/logo.png', width: 26, height: 26),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              nom,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
