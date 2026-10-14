@@ -21,3 +21,6 @@ class LecteurIntegre extends StatelessWidget {
     );
   }
 }
+
+// Version native (non distribuée) : sans effet.
+void ouvrirLienExterne(String lien) {}

@@ -52,3 +52,9 @@ class _LecteurIntegreState extends State<LecteurIntegre> {
   @override
   Widget build(BuildContext context) => HtmlElementView(viewType: _typeVue);
 }
+
+// Ouvre le lien hors de l'app (application YouTube / Facebook ou nouvel
+// onglet) : solution de secours si le lecteur intégré ne peut pas lire.
+void ouvrirLienExterne(String lien) {
+  web.window.open(lien, '_blank');
+}
