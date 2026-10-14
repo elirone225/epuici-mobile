@@ -316,41 +316,11 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  titre,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (enLecture && !LienVideo.estFichierVideo(lien))
-                _BoutonOuvrirExterne(lien: lien),
-            ],
+          Text(
+            titre,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Ouvre la vidéo dans l'application YouTube / Facebook si le lecteur intégré
-// ne peut pas la lire.
-class _BoutonOuvrirExterne extends StatelessWidget {
-  final String lien;
-
-  const _BoutonOuvrirExterne({required this.lien});
-
-  @override
-  Widget build(BuildContext context) {
-    final libelle = LienVideo.estFacebook(lien) ? 'Facebook' : 'YouTube';
-    return TextButton.icon(
-      onPressed: () => ouvrirLienExterne(lien),
-      icon: const Icon(Icons.open_in_new, size: 16),
-      label: Text('Regarder sur $libelle'),
-      style: TextButton.styleFrom(
-        foregroundColor: EpuiciColors.primaire,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
