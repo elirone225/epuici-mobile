@@ -47,9 +47,15 @@ class LienVideo {
     return lien;
   }
 
-  // Miniature affichée avant la lecture (YouTube uniquement).
+  // Miniature affichée avant la lecture : YouTube, ou vidéo envoyée sur
+  // Cloudinary (qui génère une image si on remplace l'extension par .jpg).
   static String? miniature(String lien) {
     final id = idYoutube(lien);
-    return id == null ? null : 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+    if (id != null) return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+
+    if (lien.contains('res.cloudinary.com') && lien.contains('/video/upload/')) {
+      return lien.replaceFirst(RegExp(r'\.\w+$'), '.jpg');
+    }
+    return null;
   }
 }
