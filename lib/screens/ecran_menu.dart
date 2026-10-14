@@ -124,7 +124,7 @@ class _EcranMenuState extends State<EcranMenu> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Créez un compte pour sauvegarder vos églises suivies.',
+                    'Créez un compte pour sauvegarder votre église.',
                     style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                   const SizedBox(height: 10),
@@ -164,7 +164,7 @@ class _EcranMenuState extends State<EcranMenu> {
             ),
           const SizedBox(height: 20),
           Text(
-            'Églises suivies',
+            'Mon église',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -182,7 +182,7 @@ class _EcranMenuState extends State<EcranMenu> {
           OutlinedButton.icon(
             onPressed: _ajouterOuChangerVillage,
             icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-            label: const Text("Ajouter ou changer d'église"),
+            label: Text(_mesVillages.isEmpty ? 'Choisir mon église' : "Changer d'église"),
             style: OutlinedButton.styleFrom(
               foregroundColor: EpuiciColors.primaire,
               side: const BorderSide(color: EpuiciColors.primaire),

@@ -21,7 +21,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 const _canalArticles = AndroidNotificationChannel(
   'epuici_articles',
   'Nouveaux articles',
-  description: "Notifications des nouveaux articles publiés dans vos églises suivies.",
+  description: "Notifications des nouveaux articles publiés par votre église.",
   importance: Importance.high,
 );
 

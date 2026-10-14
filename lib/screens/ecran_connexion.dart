@@ -31,23 +31,20 @@ class _EcranConnexionState extends State<EcranConnexion> {
       );
       await StockageLocal.enregistrerToken(donnees['token']);
 
-      // Synchronise les villages suivis dans les deux sens : les villages
-      // choisis localement (avant connexion) sont envoyés vers le compte,
-      // et ceux déjà enregistrés sur le compte (ex: suivis depuis un autre
-      // appareil) sont récupérés localement pour ne rien perdre à la
-      // reconnexion.
+      // Synchronise l'église suivie (une seule par fidèle) : celle déjà
+      // enregistrée sur le compte (ex: choisie depuis un autre appareil) est
+      // prioritaire ; sinon, celle choisie localement avant la connexion est
+      // envoyée vers le compte.
       final villagesLocaux = await StockageLocal.obtenirVillagesSuivis();
       final List villagesServeur = donnees['villagesSuivis'] ?? [];
-      final idsServeur = villagesServeur.map((v) => v['_id'].toString()).toSet();
+      final idsServeur = villagesServeur.map((v) => v['_id'].toString()).toList();
 
-      for (final id in villagesLocaux) {
-        if (!idsServeur.contains(id)) {
-          await ApiService.suivreVillageCompte(id);
-        }
+      if (idsServeur.isEmpty && villagesLocaux.isNotEmpty) {
+        await ApiService.suivreVillageCompte(villagesLocaux.first);
       }
-
-      final idsFusionnes = {...idsServeur, ...villagesLocaux}.toList();
-      await StockageLocal.enregistrerVillagesSuivis(idsFusionnes);
+      await StockageLocal.enregistrerVillagesSuivis(
+        idsServeur.isNotEmpty ? [idsServeur.first] : villagesLocaux,
+      );
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

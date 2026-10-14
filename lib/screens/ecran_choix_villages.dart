@@ -6,8 +6,8 @@ import '../services/stockage_local.dart';
 import 'navigation_principale.dart';
 
 class EcranChoixVillages extends StatefulWidget {
-  // Mode modification : ouvert depuis le menu pour ajouter/retirer des villages
-  // suivis, plutôt que lors de l'onboarding initial.
+  // Mode modification : ouvert depuis le menu pour changer d'église suivie,
+  // plutôt que lors de l'onboarding initial.
   final bool modeModification;
 
   const EcranChoixVillages({super.key, this.modeModification = false});
@@ -18,13 +18,12 @@ class EcranChoixVillages extends StatefulWidget {
 
 class _EcranChoixVillagesState extends State<EcranChoixVillages> {
   List<Village> _villages = [];
-  final Set<String> _villagesSelectionnes = {};
-  Set<String> _villagesInitiaux = {};
+  // Un fidèle ne suit qu'une seule église.
+  String? _villageSelectionne;
+  String? _villageInitial;
   bool _chargement = true;
   String _erreur = '';
   String _recherche = '';
-
-  static const int _maxVillages = 5;
 
   @override
   void initState() {
@@ -40,8 +39,8 @@ class _EcranChoixVillagesState extends State<EcranChoixVillages> {
           : <String>[];
       setState(() {
         _villages = villages;
-        _villagesInitiaux = suivisActuels.toSet();
-        _villagesSelectionnes.addAll(_villagesInitiaux);
+        _villageInitial = suivisActuels.isEmpty ? null : suivisActuels.first;
+        _villageSelectionne = _villageInitial;
         _chargement = false;
       });
     } catch (e) {
@@ -52,41 +51,18 @@ class _EcranChoixVillagesState extends State<EcranChoixVillages> {
     }
   }
 
-  void _toggleVillage(String id) {
-    setState(() {
-      if (_villagesSelectionnes.contains(id)) {
-        _villagesSelectionnes.remove(id);
-      } else {
-        if (_villagesSelectionnes.length >= _maxVillages) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Vous pouvez suivre $_maxVillages églises maximum.')),
-          );
-          return;
-        }
-        _villagesSelectionnes.add(id);
-      }
-    });
-  }
-
   Future<void> _enregistrer() async {
-    if (_villagesSelectionnes.isEmpty) {
+    final id = _villageSelectionne;
+    if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sélectionnez au moins une église.')),
+        const SnackBar(content: Text('Sélectionnez votre église.')),
       );
       return;
     }
-    final idsSelectionnes = _villagesSelectionnes.toList();
-    await StockageLocal.enregistrerVillagesSuivis(idsSelectionnes);
+    await StockageLocal.enregistrerVillagesSuivis([id]);
 
-    if (await StockageLocal.estConnecte()) {
-      final ajoutes = _villagesSelectionnes.difference(_villagesInitiaux);
-      final retires = _villagesInitiaux.difference(_villagesSelectionnes);
-      for (final id in ajoutes) {
-        await ApiService.suivreVillageCompte(id);
-      }
-      for (final id in retires) {
-        await ApiService.neSuivrePlusVillageCompte(id);
-      }
+    if (id != _villageInitial && await StockageLocal.estConnecte()) {
+      await ApiService.suivreVillageCompte(id);
     }
 
     if (!mounted) return;
@@ -109,7 +85,7 @@ class _EcranChoixVillagesState extends State<EcranChoixVillages> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.modeModification ? 'Mes églises suivies' : 'Choisissez vos églises',
+          widget.modeModification ? 'Mon église' : 'Choisissez votre église',
         ),
       ),
       body: Column(
@@ -117,7 +93,7 @@ class _EcranChoixVillagesState extends State<EcranChoixVillages> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'Sélectionnez une ou plusieurs églises pour suivre leurs actualités (max $_maxVillages).',
+              "Sélectionnez votre église pour suivre ses actualités. Vous ne pouvez suivre qu'une seule église.",
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
           ),
@@ -145,23 +121,25 @@ class _EcranChoixVillagesState extends State<EcranChoixVillages> {
                     ? Center(child: Text(_erreur))
                     : villagesFiltres.isEmpty
                         ? const Center(child: Text('Aucune église trouvée.'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: villagesFiltres.length,
-                            itemBuilder: (context, index) {
-                              final village = villagesFiltres[index];
-                              final selectionne = _villagesSelectionnes.contains(village.id);
-                              return CheckboxListTile(
-                                value: selectionne,
-                                onChanged: (_) => _toggleVillage(village.id),
-                                activeColor: EpuiciColors.primaire,
-                                title: Text(village.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                subtitle: Text(village.region),
-                                controlAffinity: ListTileControlAffinity.trailing,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                tileColor: Colors.white,
-                              );
-                            },
+                        : RadioGroup<String>(
+                            groupValue: _villageSelectionne,
+                            onChanged: (id) => setState(() => _villageSelectionne = id),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: villagesFiltres.length,
+                              itemBuilder: (context, index) {
+                                final village = villagesFiltres[index];
+                                return RadioListTile<String>(
+                                  value: village.id,
+                                  activeColor: EpuiciColors.primaire,
+                                  title: Text(village.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  subtitle: Text(village.region),
+                                  controlAffinity: ListTileControlAffinity.trailing,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  tileColor: Colors.white,
+                                );
+                              },
+                            ),
                           ),
           ),
           Padding(

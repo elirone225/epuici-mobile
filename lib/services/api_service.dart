@@ -408,6 +408,28 @@ class ApiService {
     }
   }
 
+  // Envoie une demande de prière à l'admin de l'église suivie par le fidèle.
+  static Future<void> envoyerDemandePriere(String texte) async {
+    final token = await StockageLocal.obtenirToken();
+    if (token == null) {
+      throw Exception('Vous devez être connecté pour envoyer une demande de prière.');
+    }
+
+    final reponse = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/demandes-priere'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'texte': texte}),
+    );
+
+    if (reponse.statusCode != 201) {
+      final donnees = jsonDecode(reponse.body);
+      throw Exception(donnees['message'] ?? "Impossible d'envoyer la demande de prière.");
+    }
+  }
+
   // --- Groupes de l'église (discussion entre fidèles) ---
 
   // Appel authentifié commun aux écrans des groupes : renvoie le JSON décodé

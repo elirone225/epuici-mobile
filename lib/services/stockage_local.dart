@@ -11,9 +11,11 @@ class StockageLocal {
     await prefs.setBool(_cleOnboardingFait, true);
   }
 
+  // Un fidèle ne suit qu'une seule église : la liste contient au plus un id
+  // (les anciennes installations qui en avaient plusieurs gardent la première).
   static Future<List<String>> obtenirVillagesSuivis() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_cleVillagesSuivis) ?? [];
+    return (prefs.getStringList(_cleVillagesSuivis) ?? []).take(1).toList();
   }
 
   static Future<bool> onboardingDejaFait() async {
