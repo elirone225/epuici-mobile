@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
 import '../services/stockage_local.dart';
+import '../widgets/animations.dart';
 import '../widgets/lecteur_integre.dart';
 import '../widgets/lien_video.dart';
 import 'ecran_choix_villages.dart';
@@ -102,31 +103,22 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Live & VOD')),
+      appBar: const AppBarEpuici(titre: Text('Live & VOD')),
       body: _contenu(),
     );
   }
 
   Widget _contenu() {
     if (_chargement) {
-      return const Center(
-        child: CircularProgressIndicator(color: EpuiciColors.primaire),
-      );
+      return const ListeSquelettes(nombre: 2);
     }
 
     if (_erreur.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_erreur, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              TextButton(onPressed: _charger, child: const Text('Réessayer')),
-            ],
-          ),
-        ),
+      return EtatVide(
+        icone: Icons.wifi_off_rounded,
+        message: _erreur,
+        libelleAction: 'Réessayer',
+        onAction: _charger,
       );
     }
 
@@ -136,10 +128,26 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
-          _lecteurDirect(),
+          Apparition(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: _lecteurDirect(),
+            ),
+          ),
           if (!_aucuneEglise)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
                   _BadgeDirect(enCours: _directEnCours),
@@ -155,8 +163,31 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            child: Text('Vidéos', style: Theme.of(context).textTheme.titleMedium),
+            padding: const EdgeInsets.fromLTRB(16, 22, 16, 6),
+            child: Row(
+              children: [
+                const Icon(Icons.video_library_rounded, color: EpuiciColors.primaire, size: 22),
+                const SizedBox(width: 8),
+                Text('Vidéos', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 19)),
+                const SizedBox(width: 8),
+                if (_videos.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: EpuiciColors.primaire.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_videos.length}',
+                      style: const TextStyle(
+                        color: EpuiciColors.primaire,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (_videos.isEmpty)
             Padding(
@@ -166,7 +197,8 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
                 style: TextStyle(color: Colors.grey.shade600),
               ),
             ),
-          for (final video in _videos) _carteVideo(video),
+          for (var i = 0; i < _videos.length; i++)
+            Apparition(index: i + 1, child: _carteVideo(_videos[i])),
         ],
       ),
     );

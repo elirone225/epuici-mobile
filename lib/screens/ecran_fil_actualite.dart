@@ -4,7 +4,9 @@ import '../models/article_model.dart';
 import '../models/village_model.dart';
 import '../services/api_service.dart';
 import '../services/stockage_local.dart';
+import '../widgets/animations.dart';
 import '../widgets/carrousel_photos.dart';
+import 'ecran_choix_villages.dart';
 import 'ecran_detail_article.dart';
 
 class EcranFilActualite extends StatefulWidget {
@@ -20,6 +22,7 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
   List<String> _bannieresPub = [];
   bool _chargement = true;
   String _erreur = '';
+  bool _aucuneEglise = false;
   int _ongletActif = 0; // 0 = "Pour vous" (tous), sinon index+1 = village précis
 
   @override
@@ -35,6 +38,16 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
     });
     try {
       final idsSuivis = await StockageLocal.obtenirVillagesSuivis();
+      if (idsSuivis.isEmpty) {
+        setState(() {
+          _aucuneEglise = true;
+          _mesVillages = [];
+          _articles = [];
+          _chargement = false;
+        });
+        return;
+      }
+      _aucuneEglise = false;
       final tousLesVillages = await ApiService.listerVillages();
       final mesVillages = tousLesVillages.where((v) => idsSuivis.contains(v.id)).toList();
 
@@ -76,11 +89,15 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
+      appBar: AppBarEpuici(
+        titre: Row(
           children: [
-            Image.asset('assets/images/logo.png', height: 32),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              child: Image.asset('assets/images/logo.png', height: 30),
+            ),
+            const SizedBox(width: 10),
             const Text('EPUICI'),
           ],
         ),
@@ -102,10 +119,10 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
 
   Widget _barreOnglets() {
     return SizedBox(
-      height: 44,
+      height: 52,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
         children: [
           _onglet('Pour vous', 0),
           ..._mesVillages.asMap().entries.map(
@@ -122,11 +139,24 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: GestureDetector(
         onTap: () => _changerOnglet(index),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: actif ? EpuiciColors.primaire : Colors.grey.shade100,
+            gradient: actif ? degradeEpuici : null,
+            color: actif ? null : Colors.white,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: actif ? Colors.transparent : Colors.grey.shade300),
+            boxShadow: actif
+                ? [
+                    BoxShadow(
+                      color: EpuiciColors.primaire.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : [],
           ),
           alignment: Alignment.center,
           child: Text(
@@ -144,15 +174,42 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
 
   Widget _contenu() {
     if (_chargement) {
-      return const Center(child: CircularProgressIndicator(color: EpuiciColors.primaire));
+      return const ListeSquelettes();
+    }
+    if (_aucuneEglise) {
+      return EtatVide(
+        icone: Icons.church_rounded,
+        message: 'Choisissez votre église pour suivre ses actualités.',
+        libelleAction: 'Choisir mon église',
+        onAction: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const EcranChoixVillages(modeModification: true),
+            ),
+          );
+          _charger();
+        },
+      );
     }
     if (_erreur.isNotEmpty) {
-      return Center(child: Text(_erreur));
+      return EtatVide(
+        icone: Icons.wifi_off_rounded,
+        message: _erreur,
+        libelleAction: 'Réessayer',
+        onAction: _charger,
+      );
     }
     final aBandePub = _bannieresPub.isNotEmpty;
 
     if (_articles.isEmpty && !aBandePub) {
-      return const Center(child: Text('Aucune actualité pour le moment.'));
+      return RefreshIndicator(
+        onRefresh: _charger,
+        color: EpuiciColors.primaire,
+        child: const EtatVide(
+          icone: Icons.newspaper_rounded,
+          message: 'Aucune actualité pour le moment.\nTirez vers le bas pour actualiser.',
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -161,13 +218,14 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          if (aBandePub) _bandePub(),
+          if (aBandePub) Apparition(child: _bandePub()),
           if (_articles.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 40),
               child: Center(child: Text('Aucune actualité pour le moment.')),
             ),
-          ..._articles.map(_carteArticle),
+          for (var i = 0; i < _articles.length; i++)
+            Apparition(index: i + 1, child: _carteArticle(_articles[i])),
         ],
       ),
     );
@@ -179,7 +237,7 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
       builder: (context, contraintes) => Container(
         margin: const EdgeInsets.only(bottom: 14),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: CarrouselPhotos(
             key: ValueKey(_bannieresPub.join(',')),
             photos: _bannieresPub,
@@ -191,84 +249,138 @@ class _EcranFilActualiteState extends State<EcranFilActualite> {
   }
 
   Widget _carteArticle(Article article) {
-    return GestureDetector(
+    return TapAnime(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => EcranDetailArticle(articleId: article.id)),
         );
       },
       child: Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-            child: Row(
-              children: [
-                if (article.villageNom != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: EpuiciColors.primaire,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      article.villageNom!,
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
+        margin: const EdgeInsets.only(bottom: 16),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: EpuiciColors.primaire.withValues(alpha: 0.07),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: Row(
+                children: [
+                  if (article.villageNom != null)
+                    Flexible(child: _etiquetteEglise(article.villageNom!)),
+                  const Spacer(),
+                  Icon(Icons.schedule_rounded, size: 14, color: Colors.grey.shade400),
+                  const SizedBox(width: 3),
+                  Text(
+                    article.tempsEcoule(),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                   ),
-                const Spacer(),
-                Text(article.tempsEcoule(), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-              ],
+                ],
+              ),
             ),
+            if (article.photos.isNotEmpty)
+              CarrouselPhotos(
+                key: ValueKey(article.id),
+                photos: article.photos,
+                height: 190,
+              ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.titre,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, height: 1.25),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    article.contenu,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.35),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _pastille(Icons.favorite_rounded, '${article.likes}', Colors.pink.shade400),
+                      const SizedBox(width: 8),
+                      _pastille(Icons.visibility_rounded, '${article.vues}', EpuiciColors.primaire),
+                      const Spacer(),
+                      const Text(
+                        'Lire la suite',
+                        style: TextStyle(
+                          color: EpuiciColors.primaire,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, size: 16, color: EpuiciColors.primaire),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Église de l'article : petit logo + nom sur fond dégradé.
+  Widget _etiquetteEglise(String nom) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(3, 3, 10, 3),
+      decoration: BoxDecoration(
+        gradient: degradeEpuici,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(1),
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: Image.asset('assets/images/logo.png', width: 18, height: 18),
           ),
-          if (article.photos.isNotEmpty)
-            CarrouselPhotos(
-              key: ValueKey(article.id),
-              photos: article.photos,
-              height: 180,
-            ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  article.titre,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  article.contenu,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(Icons.favorite_border, size: 18, color: Colors.grey.shade500),
-                    const SizedBox(width: 4),
-                    Text('${article.likes}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                    const SizedBox(width: 16),
-                    Icon(Icons.remove_red_eye_outlined, size: 18, color: Colors.grey.shade500),
-                    const SizedBox(width: 4),
-                    Text('${article.vues}', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                  ],
-                ),
-              ],
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              nom,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // Petit compteur arrondi (mentions j'aime, vues) sous un article.
+  Widget _pastille(IconData icone, String valeur, Color couleur) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: couleur.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icone, size: 14, color: couleur),
+          const SizedBox(width: 4),
+          Text(valeur, style: TextStyle(color: couleur, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

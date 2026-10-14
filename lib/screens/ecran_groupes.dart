@@ -4,6 +4,7 @@ import '../models/groupe_model.dart';
 import '../models/village_model.dart';
 import '../services/api_service.dart';
 import '../services/stockage_local.dart';
+import '../widgets/animations.dart';
 import '../widgets/avatar_fidele.dart';
 import 'ecran_connexion.dart';
 import 'ecran_discussion_groupe.dart';
@@ -56,8 +57,9 @@ class _EcranGroupesState extends State<EcranGroupes> {
         ApiService.listerVillages(),
       ]);
       final mesGroupes = resultats[0] as List<Groupe>;
-      final mesEglises =
-          (resultats[1] as List<Village>).where((v) => idsSuivis.contains(v.id)).toList();
+      final mesEglises = (resultats[1] as List<Village>)
+          .where((v) => idsSuivis.contains(v.id))
+          .toList();
 
       setState(() {
         _connecte = true;
@@ -79,7 +81,9 @@ class _EcranGroupesState extends State<EcranGroupes> {
     if (_mesEglises.isEmpty) return;
     setState(() => _chargementEglise = true);
     try {
-      final groupes = await ApiService.groupesDeLEglise(_mesEglises[_egliseActive].id);
+      final groupes = await ApiService.groupesDeLEglise(
+        _mesEglises[_egliseActive].id,
+      );
       setState(() => _groupesEglise = groupes);
     } catch (_) {
       setState(() => _groupesEglise = []);
@@ -91,18 +95,25 @@ class _EcranGroupesState extends State<EcranGroupes> {
   Future<void> _ouvrirDiscussion(Groupe groupe) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => EcranDiscussionGroupe(groupeId: groupe.id, nomGroupe: groupe.nom),
+        builder: (_) =>
+            EcranDiscussionGroupe(groupeId: groupe.id, nomGroupe: groupe.nom),
       ),
     );
     _charger();
   }
 
-  Future<void> _executerAction(Groupe groupe, Future<void> Function() action, String succes) async {
+  Future<void> _executerAction(
+    Groupe groupe,
+    Future<void> Function() action,
+    String succes,
+  ) async {
     setState(() => _actionsEnCours.add(groupe.id));
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(succes)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(succes)));
       await _chargerGroupesEglise();
     } catch (e) {
       if (!mounted) return;
@@ -117,14 +128,14 @@ class _EcranGroupesState extends State<EcranGroupes> {
   @override
   Widget build(BuildContext context) {
     if (_chargement) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Groupes')),
-        body: const Center(child: CircularProgressIndicator(color: EpuiciColors.primaire)),
+      return const Scaffold(
+        appBar: AppBarEpuici(titre: Text('Groupes')),
+        body: ListeSquelettes(avecImage: false, nombre: 5),
       );
     }
     if (!_connecte) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Groupes')),
+        appBar: const AppBarEpuici(titre: Text('Groupes')),
         body: _invitationConnexion(),
       );
     }
@@ -132,12 +143,16 @@ class _EcranGroupesState extends State<EcranGroupes> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Groupes'),
-          bottom: const TabBar(
-            labelColor: EpuiciColors.primaire,
-            indicatorColor: EpuiciColors.primaire,
-            unselectedLabelColor: Colors.grey,
+        appBar: const AppBarEpuici(
+          titre: Text('Groupes'),
+          bottom: TabBar(
+            labelColor: Colors.white,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: Colors.transparent,
+            unselectedLabelColor: Colors.white70,
+            labelStyle: TextStyle(fontWeight: FontWeight.w700),
             tabs: [
               Tab(text: 'Mes groupes'),
               Tab(text: 'Découvrir'),
@@ -152,50 +167,26 @@ class _EcranGroupesState extends State<EcranGroupes> {
   }
 
   Widget _invitationConnexion() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.forum_outlined, size: 64, color: EpuiciColors.primaire.withValues(alpha: 0.4)),
-            const SizedBox(height: 16),
-            const Text(
-              'Connectez-vous pour rejoindre les groupes de votre église et discuter avec leurs membres.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const EcranConnexion()),
-                );
-                _charger();
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text('Se connecter'),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EtatVide(
+      icone: Icons.forum_rounded,
+      message:
+          'Connectez-vous pour rejoindre les groupes de votre église et discuter avec leurs membres.',
+      libelleAction: 'Se connecter',
+      onAction: () async {
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const EcranConnexion()));
+        _charger();
+      },
     );
   }
 
   Widget _messageErreur() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_erreur!, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            TextButton(onPressed: _charger, child: const Text('Réessayer')),
-          ],
-        ),
-      ),
+    return EtatVide(
+      icone: Icons.wifi_off_rounded,
+      message: _erreur!,
+      libelleAction: 'Réessayer',
+      onAction: _charger,
     );
   }
 
@@ -204,17 +195,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
       return RefreshIndicator(
         onRefresh: _charger,
         color: EpuiciColors.primaire,
-        child: ListView(
-          children: const [
-            SizedBox(height: 120),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                "Vous ne faites partie d'aucun groupe.\nOuvrez l'onglet « Découvrir » pour demander à en rejoindre un.",
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
+        child: const EtatVide(
+          icone: Icons.groups_rounded,
+          message:
+              "Vous ne faites partie d'aucun groupe.\nOuvrez l'onglet « Découvrir » pour demander à en rejoindre un.",
         ),
       );
     }
@@ -222,45 +206,84 @@ class _EcranGroupesState extends State<EcranGroupes> {
     return RefreshIndicator(
       onRefresh: _charger,
       color: EpuiciColors.primaire,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         itemCount: _mesGroupes.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, indent: 76),
         itemBuilder: (context, index) {
           final groupe = _mesGroupes[index];
           final apercu = groupe.dernierMessageTexte != null
               ? '${groupe.dernierMessageAuteur} : ${groupe.dernierMessageTexte}'
               : groupe.egliseNom ?? 'Aucun message';
-          return ListTile(
-            onTap: () => _ouvrirDiscussion(groupe),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            leading: AvatarFidele(nom: groupe.nom, rayon: 24),
-            title: Text(groupe.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(apercu, maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (groupe.dernierMessageLe != null)
-                  Text(
-                    libelleDateCourte(groupe.dernierMessageLe!),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                if (groupe.nbDemandesEnAttente > 0) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: EpuiciColors.accent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${groupe.nbDemandesEnAttente} demande${groupe.nbDemandesEnAttente > 1 ? 's' : ''}',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                    ),
+          return Apparition(
+            index: index,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: EpuiciColors.primaire.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
-              ],
+              ),
+              child: ListTile(
+                onTap: () => _ouvrirDiscussion(groupe),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                leading: AvatarFidele(nom: groupe.nom, rayon: 24),
+                title: Text(
+                  groupe.nom,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  apercu,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (groupe.dernierMessageLe != null)
+                      Text(
+                        libelleDateCourte(groupe.dernierMessageLe!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    if (groupe.nbDemandesEnAttente > 0) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: EpuiciColors.accent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${groupe.nbDemandesEnAttente} demande${groupe.nbDemandesEnAttente > 1 ? 's' : ''}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -270,7 +293,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
 
   Widget _ongletDecouvrir() {
     if (_mesEglises.isEmpty) {
-      return const Center(child: Text('Suivez une église pour découvrir ses groupes.'));
+      return const EtatVide(
+        icone: Icons.church_rounded,
+        message: 'Suivez une église pour découvrir ses groupes.',
+      );
     }
 
     return Column(
@@ -278,21 +304,22 @@ class _EcranGroupesState extends State<EcranGroupes> {
         if (_mesEglises.length > 1) _barreEglises(),
         Expanded(
           child: _chargementEglise
-              ? const Center(child: CircularProgressIndicator(color: EpuiciColors.primaire))
+              ? const ListeSquelettes(avecImage: false)
               : RefreshIndicator(
                   onRefresh: _chargerGroupesEglise,
                   color: EpuiciColors.primaire,
                   child: _groupesEglise.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text("Cette église n'a pas encore de groupe.")),
-                          ],
+                      ? const EtatVide(
+                          icone: Icons.group_add_rounded,
+                          message: "Cette église n'a pas encore de groupe.",
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(12),
                           itemCount: _groupesEglise.length,
-                          itemBuilder: (context, index) => _carteGroupe(_groupesEglise[index]),
+                          itemBuilder: (context, index) => Apparition(
+                            index: index,
+                            child: _carteGroupe(_groupesEglise[index]),
+                          ),
                         ),
                 ),
         ),
@@ -317,7 +344,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
                 _chargerGroupesEglise();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: actif ? EpuiciColors.primaire : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(18),
@@ -342,12 +372,16 @@ class _EcranGroupesState extends State<EcranGroupes> {
   Widget _carteGroupe(Groupe groupe) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: EpuiciColors.primaire.withValues(alpha: 0.07),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
@@ -361,10 +395,19 @@ class _EcranGroupesState extends State<EcranGroupes> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(groupe.nom, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text(
+                      groupe.nom,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                     Text(
                       '${groupe.nbMembres} membre${groupe.nbMembres > 1 ? 's' : ''}',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -373,7 +416,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
           ),
           if (groupe.description.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(groupe.description, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+            Text(
+              groupe.description,
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
           ],
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: _boutonAction(groupe)),
@@ -389,7 +435,11 @@ class _EcranGroupesState extends State<EcranGroupes> {
       return OutlinedButton.icon(
         onPressed: () => _ouvrirDiscussion(groupe),
         icon: const Icon(Icons.forum_outlined, size: 18),
-        label: Text(groupe.estResponsable ? 'Ouvrir (responsable)' : 'Ouvrir la discussion'),
+        label: Text(
+          groupe.estResponsable
+              ? 'Ouvrir (responsable)'
+              : 'Ouvrir la discussion',
+        ),
         style: OutlinedButton.styleFrom(
           foregroundColor: EpuiciColors.primaire,
           side: const BorderSide(color: EpuiciColors.primaire),
@@ -402,10 +452,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
         onPressed: enCours
             ? null
             : () => _executerAction(
-                  groupe,
-                  () => ApiService.annulerDemandeGroupe(groupe.id),
-                  'Demande annulée.',
-                ),
+                groupe,
+                () => ApiService.annulerDemandeGroupe(groupe.id),
+                'Demande annulée.',
+              ),
         style: OutlinedButton.styleFrom(foregroundColor: Colors.grey.shade700),
         child: const Text('Demande en attente · Annuler'),
       );
@@ -415,10 +465,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
       onPressed: enCours
           ? null
           : () => _executerAction(
-                groupe,
-                () => ApiService.demanderAdhesionGroupe(groupe.id),
-                'Demande envoyée. Un responsable du groupe doit la valider.',
-              ),
+              groupe,
+              () => ApiService.demanderAdhesionGroupe(groupe.id),
+              'Demande envoyée. Un responsable du groupe doit la valider.',
+            ),
       style: ElevatedButton.styleFrom(
         backgroundColor: EpuiciColors.primaire,
         foregroundColor: Colors.white,
@@ -428,7 +478,10 @@ class _EcranGroupesState extends State<EcranGroupes> {
           ? const SizedBox(
               height: 18,
               width: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             )
           : const Text('Demander à rejoindre'),
     );

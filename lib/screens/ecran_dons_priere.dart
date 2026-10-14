@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
 import '../services/stockage_local.dart';
+import '../widgets/animations.dart';
 import 'ecran_choix_villages.dart';
 import 'ecran_connexion.dart';
 
@@ -150,7 +151,7 @@ class _EcranDonsPriereState extends State<EcranDonsPriere>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dons & Prière')),
+      appBar: const AppBarEpuici(titre: Text('Dons & Prière')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -173,28 +174,37 @@ class _EcranDonsPriereState extends State<EcranDonsPriere>
             style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
           ),
           const SizedBox(height: 24),
-          _CarteAction(
-            icone: Icons.volunteer_activism_outlined,
-            couleur: EpuiciColors.accent,
-            titre: 'Faire un don',
-            sousTitre: 'Soutenir les œuvres de votre église',
-            onTap: () => _pasEncoreDisponible('Faire un don'),
+          Apparition(
+            index: 1,
+            child: _CarteAction(
+              icone: Icons.volunteer_activism_rounded,
+              couleur: EpuiciColors.accent,
+              titre: 'Faire un don',
+              sousTitre: 'Soutenir les œuvres de votre église',
+              onTap: () => _pasEncoreDisponible('Faire un don'),
+            ),
           ),
           const SizedBox(height: 12),
-          _CarteAction(
-            icone: Icons.account_balance_wallet_outlined,
-            couleur: EpuiciColors.primaire,
-            titre: 'Payer la dîme',
-            sousTitre: 'Rendre à Dieu la dîme de vos revenus',
-            onTap: () => _pasEncoreDisponible('Payer la dîme'),
+          Apparition(
+            index: 2,
+            child: _CarteAction(
+              icone: Icons.account_balance_wallet_rounded,
+              couleur: EpuiciColors.primaire,
+              titre: 'Payer la dîme',
+              sousTitre: 'Rendre à Dieu la dîme de vos revenus',
+              onTap: () => _pasEncoreDisponible('Payer la dîme'),
+            ),
           ),
           const SizedBox(height: 12),
-          _CarteAction(
-            icone: Icons.favorite_outline,
-            couleur: const Color(0xFF6A3FA0),
-            titre: 'Demande de prière',
-            sousTitre: "Confier un sujet de prière à l'admin de votre église",
-            onTap: _demandePriere,
+          Apparition(
+            index: 3,
+            child: _CarteAction(
+              icone: Icons.favorite_rounded,
+              couleur: const Color(0xFF6A3FA0),
+              titre: 'Demande de prière',
+              sousTitre: "Confier un sujet de prière à l'admin de votre église",
+              onTap: _demandePriere,
+            ),
           ),
         ],
       ),
@@ -322,24 +332,36 @@ class _CarteAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
+    return TapAnime(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: couleur.withValues(alpha: 0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: couleur.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: [couleur, couleur.withValues(alpha: 0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icone, color: couleur),
+                child: Icon(icone, color: Colors.white),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -354,7 +376,7 @@ class _CarteAction extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              Icon(Icons.chevron_right_rounded, color: couleur),
             ],
           ),
         ),

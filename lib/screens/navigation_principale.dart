@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
 import 'ecran_fil_actualite.dart';
 import 'ecran_groupes.dart';
 import 'ecran_live_vod.dart';
@@ -19,8 +18,30 @@ class NavigationPrincipale extends StatefulWidget {
   State<NavigationPrincipale> createState() => _NavigationPrincipaleState();
 }
 
-class _NavigationPrincipaleState extends State<NavigationPrincipale> {
+class _NavigationPrincipaleState extends State<NavigationPrincipale>
+    with SingleTickerProviderStateMixin {
   late int _indexActif = widget.ongletInitial;
+
+  // Fondu + léger glissement à chaque changement d'onglet.
+  late final AnimationController _transition = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+    value: 1,
+  );
+  late final Animation<double> _courbe =
+      CurvedAnimation(parent: _transition, curve: Curves.easeOutCubic);
+
+  void _changerOnglet(int index) {
+    if (index == _indexActif) return;
+    setState(() => _indexActif = index);
+    _transition.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _transition.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,21 +54,24 @@ class _NavigationPrincipaleState extends State<NavigationPrincipale> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _indexActif, children: ecrans),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _indexActif,
-        onTap: (index) => setState(() => _indexActif = index),
-        selectedItemColor: EpuiciColors.primaire,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Accueil'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), activeIcon: Icon(Icons.forum), label: 'Groupes'),
-          BottomNavigationBarItem(icon: Icon(Icons.live_tv_outlined), activeIcon: Icon(Icons.live_tv), label: 'Live & VOD'),
-          BottomNavigationBarItem(icon: Icon(Icons.volunteer_activism_outlined), activeIcon: Icon(Icons.volunteer_activism), label: 'Dons & Prière'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
+      body: FadeTransition(
+        opacity: _courbe,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.015), end: Offset.zero)
+              .animate(_courbe),
+          child: IndexedStack(index: _indexActif, children: ecrans),
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _indexActif,
+        onDestinationSelected: _changerOnglet,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Accueil'),
+          NavigationDestination(icon: Icon(Icons.forum_outlined), selectedIcon: Icon(Icons.forum), label: 'Groupes'),
+          NavigationDestination(icon: Icon(Icons.live_tv_outlined), selectedIcon: Icon(Icons.live_tv), label: 'Live & VOD'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism), label: 'Dons & Prière'),
+          NavigationDestination(icon: Icon(Icons.menu), selectedIcon: Icon(Icons.menu_open), label: 'Menu'),
         ],
       ),
     );
