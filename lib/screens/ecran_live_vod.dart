@@ -181,7 +181,12 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
       child: ColoredBox(
         color: Colors.black,
         child: afficherLecteur
-            ? LecteurIntegre(key: ValueKey('direct-$_lienDirect'), lien: _lienDirect)
+            ? LecteurIntegre(
+                key: ValueKey('direct-$_lienDirect'),
+                lien: _lienDirect,
+                // Le direct démarre dès que le fidèle ouvre l'onglet.
+                lectureAuto: true,
+              )
             : Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

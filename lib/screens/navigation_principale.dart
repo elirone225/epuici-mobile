@@ -7,25 +7,28 @@ import 'ecran_dons_priere.dart';
 import 'ecran_menu.dart';
 
 class NavigationPrincipale extends StatefulWidget {
-  const NavigationPrincipale({super.key});
+  static const int ongletLiveVod = 2;
+  static const int ongletDonsPriere = 3;
+
+  // Onglet affiché à l'ouverture (ex : "Live & VOD" quand l'église est en direct).
+  final int ongletInitial;
+
+  const NavigationPrincipale({super.key, this.ongletInitial = 0});
 
   @override
   State<NavigationPrincipale> createState() => _NavigationPrincipaleState();
 }
 
 class _NavigationPrincipaleState extends State<NavigationPrincipale> {
-  static const int _indexLiveVod = 2;
-  static const int _indexDonsPriere = 3;
-
-  int _indexActif = 0;
+  late int _indexActif = widget.ongletInitial;
 
   @override
   Widget build(BuildContext context) {
     final ecrans = [
       const EcranFilActualite(),
       const EcranGroupes(),
-      EcranLiveVod(actif: _indexActif == _indexLiveVod),
-      EcranDonsPriere(actif: _indexActif == _indexDonsPriere),
+      EcranLiveVod(actif: _indexActif == NavigationPrincipale.ongletLiveVod),
+      EcranDonsPriere(actif: _indexActif == NavigationPrincipale.ongletDonsPriere),
       const EcranMenu(),
     ];
 

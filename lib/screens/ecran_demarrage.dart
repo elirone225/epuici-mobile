@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show lerpDouble;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
@@ -68,6 +69,8 @@ class _EcranDemarrageState extends State<EcranDemarrage>
   // Rotation continue des logos.
   late final AnimationController _controleurRotation;
 
+  final _lecteurCarillon = AudioPlayer();
+
   late final Animation<double> _opaciteCarte;
   late final Animation<double> _echelleCarte;
   late final Animation<double> _echelleGrosLogo;
@@ -113,6 +116,7 @@ class _EcranDemarrageState extends State<EcranDemarrage>
     _opaciteSousTitre = _intervalle(0.84, 0.94, Curves.easeOut);
 
     _controleurSequence.forward();
+    _jouerCarillon();
     _demarrer();
   }
 
@@ -123,12 +127,37 @@ class _EcranDemarrageState extends State<EcranDemarrage>
     );
   }
 
+  // Petit carillon au lancement. Le navigateur peut refuser un son joué sans
+  // action de l'utilisateur (onglet classique, hors PWA installée) : dans ce
+  // cas le splash continue simplement en silence.
+  Future<void> _jouerCarillon() async {
+    try {
+      await _lecteurCarillon.setVolume(0.6);
+      await _lecteurCarillon.play(AssetSource('sons/demarrage.wav'));
+    } catch (_) {}
+  }
+
+  // Vrai si l'église suivie est en direct : l'app s'ouvre alors directement
+  // sur l'onglet "Live & VOD", où le direct démarre tout seul.
+  Future<bool> _egliseEnDirect() async {
+    try {
+      final ids = await StockageLocal.obtenirVillagesSuivis();
+      if (ids.isEmpty) return false;
+      final donnees = await ApiService.obtenirLiveVod(ids.first);
+      return donnees['direct']?['enCours'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _demarrer() async {
     final resultats = await Future.wait([
       StockageLocal.estConnecte(),
+      _egliseEnDirect(),
       Future.delayed(_dureeSplash),
     ]);
     final connecte = resultats[0] as bool;
+    final enDirect = resultats[1] as bool;
     if (connecte) {
       unawaited(ApiService.rafraichirPresence());
       unawaited(NotificationService.demanderPermissionEtEnregistrerToken());
@@ -138,8 +167,11 @@ class _EcranDemarrageState extends State<EcranDemarrage>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, _, _) =>
-            connecte ? const NavigationPrincipale() : const EcranConnexion(),
+        pageBuilder: (_, _, _) => connecte
+            ? NavigationPrincipale(
+                ongletInitial: enDirect ? NavigationPrincipale.ongletLiveVod : 0,
+              )
+            : const EcranConnexion(),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -150,6 +182,7 @@ class _EcranDemarrageState extends State<EcranDemarrage>
   void dispose() {
     _controleurSequence.dispose();
     _controleurRotation.dispose();
+    _lecteurCarillon.dispose();
     super.dispose();
   }
 
