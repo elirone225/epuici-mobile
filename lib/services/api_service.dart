@@ -421,6 +421,16 @@ class ApiService {
     throw Exception(donnees['message'] ?? 'Impossible de charger les vidéos.');
   }
 
+  // Vidéos du Super Admin seules (fidèle qui n'a pas encore choisi d'église).
+  static Future<List<Map<String, dynamic>>> listerVideosVod() async {
+    final reponse = await http.get(Uri.parse('${ApiConfig.baseUrl}/live-vod/videos'));
+
+    if (reponse.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(reponse.body));
+    }
+    throw Exception('Impossible de charger les vidéos.');
+  }
+
   // Envoie une demande de prière à l'admin de l'église suivie par le fidèle.
   static Future<void> envoyerDemandePriere(String texte) async {
     final token = await StockageLocal.obtenirToken();

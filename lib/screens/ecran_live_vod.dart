@@ -8,8 +8,8 @@ import '../widgets/lien_video.dart';
 import 'ecran_choix_villages.dart';
 
 // Onglet "Live & VOD" : en haut le lecteur du direct de l'église suivie
-// ("Direct terminé" quand l'admin n'a pas lancé de direct), puis les vidéos
-// à la demande ajoutées par l'admin, les unes à la suite des autres.
+// ("Direct terminé" tant que son admin n'a pas donné de lien), puis les vidéos
+// ajoutées par le Super Admin, communes à tous les fidèles.
 class EcranLiveVod extends StatefulWidget {
   // Vrai quand l'onglet est affiché : les lecteurs sont retirés sinon, pour
   // couper le son quand le fidèle change d'onglet.
@@ -51,16 +51,23 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
 
   Future<void> _charger() async {
     final ids = await StockageLocal.obtenirVillagesSuivis();
-    if (ids.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _aucuneEglise = true;
-        _chargement = false;
-      });
-      return;
-    }
 
     try {
+      if (ids.isEmpty) {
+        // Pas d'église : pas de direct, mais les vidéos du Super Admin
+        // restent visibles par tous.
+        final videos = await ApiService.listerVideosVod();
+        if (!mounted) return;
+        setState(() {
+          _aucuneEglise = true;
+          _erreur = '';
+          _directEnCours = false;
+          _videos = videos;
+          _chargement = false;
+        });
+        return;
+      }
+
       final donnees = await ApiService.obtenirLiveVod(ids.first);
       if (!mounted) return;
       final direct = donnees['direct'] ?? {};
@@ -107,30 +114,6 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
       );
     }
 
-    if (_aucuneEglise) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.live_tv_outlined, size: 48, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text(
-                'Choisissez votre église pour voir ses directs et ses vidéos.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _choisirEglise,
-                child: const Text('Choisir mon église'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     if (_erreur.isNotEmpty) {
       return Center(
         child: Padding(
@@ -154,22 +137,23 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           _lecteurDirect(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: Row(
-              children: [
-                _BadgeDirect(enCours: _directEnCours),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _nomEglise,
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
+          if (!_aucuneEglise)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Row(
+                children: [
+                  _BadgeDirect(enCours: _directEnCours),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _nomEglise,
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
             child: Text('Vidéos', style: Theme.of(context).textTheme.titleMedium),
@@ -211,6 +195,15 @@ class _EcranLiveVodState extends State<EcranLiveVod> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    // Le direct dépend de l'église du fidèle.
+                    if (_aucuneEglise)
+                      TextButton(
+                        onPressed: _choisirEglise,
+                        child: const Text(
+                          'Choisir mon église pour suivre ses directs',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
                   ],
                 ),
               ),
